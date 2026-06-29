@@ -144,6 +144,10 @@ const Home = () => {
               </label>
             </div>
 
+            {/* OR Divider */}
+            <div className="or-divider">
+              <span>OR</span>
+            </div>
 
             {/* Quick Self-Description */}
             <div className="self-description">

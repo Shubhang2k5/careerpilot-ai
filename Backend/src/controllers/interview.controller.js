@@ -9,48 +9,70 @@ const interviewReportModel = require("../models/interviewReport.model");
  * @description Controller to generate interview report based on user self description, resume and job description.
  */
 async function generateInterViewReportController(req, res) {
-  console.log("FILE:", req.file);
-  console.log("BODY:", req.body);
-  const resumeData = await pdfParse(req.file.buffer);
-  const resumeContent = resumeData.text;
+  try {
+    console.log("FILE:", req.file);
+    console.log("BODY:", req.body);
 
-  const { selfDescription, jobDescription } = req.body;
+    const { selfDescription, jobDescription } = req.body;
 
-  const interViewReportByAi = await generateInterviewReport({
-    resume: resumeContent,
-    selfDescription,
-    jobDescription,
-  });
+    let resumeContent = "";
 
-  console.log("AI RESPONSE:");
-  console.log(JSON.stringify(interViewReportByAi, null, 2));
+    // Parse resume only if uploaded
+    if (req.file) {
+      const resumeData = await pdfParse(req.file.buffer);
+      resumeContent = resumeData.text;
+    }
 
-  const interviewReport = await interviewReportModel.create({
-    user: req.user.id,
+    // At least one input must exist
+    if (!resumeContent && !selfDescription) {
+      return res.status(400).json({
+        message: "Please provide either a resume or a self description.",
+      });
+    }
 
-    title: interViewReportByAi.title || "Interview Report",
+    const interViewReportByAi = await generateInterviewReport({
+      resume: resumeContent,
+      selfDescription,
+      jobDescription,
+    });
 
-    jobDescription: jobDescription,
+    console.log("AI RESPONSE:");
+    console.log(JSON.stringify(interViewReportByAi, null, 2));
 
-    resume: resumeContent,
+    const interviewReport = await interviewReportModel.create({
+      user: req.user.id,
 
-    selfDescription: selfDescription,
+      title: interViewReportByAi.title || "Interview Report",
 
-    matchScore: interViewReportByAi.matchScore,
+      jobDescription,
 
-    technicalQuestions: interViewReportByAi.technicalQuestions || [],
+      resume: resumeContent,
 
-    behavioralQuestions: interViewReportByAi.behavioralQuestions || [],
+      selfDescription,
 
-    skillGaps: interViewReportByAi.skillGaps || [],
+      matchScore: interViewReportByAi.matchScore,
 
-    preparationPlan: interViewReportByAi.preparationPlan || [],
-  });
+      technicalQuestions: interViewReportByAi.technicalQuestions || [],
 
-  res.status(201).json({
-    message: "Interview report generated successfully.",
-    interviewReport,
-  });
+      behavioralQuestions: interViewReportByAi.behavioralQuestions || [],
+
+      skillGaps: interViewReportByAi.skillGaps || [],
+
+      preparationPlan: interViewReportByAi.preparationPlan || [],
+    });
+
+    res.status(201).json({
+      message: "Interview report generated successfully.",
+      interviewReport,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "Failed to generate interview report.",
+      error: err.message,
+    });
+  }
 }
 
 /**
